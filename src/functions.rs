@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 use super::ftrait::Function;
 use super::tensor::Tensor;
-
 ///////////////
 // Declaration of Binary Functions :)
 //////////////

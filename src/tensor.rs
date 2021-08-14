@@ -1,6 +1,7 @@
 #![allow(unused)]
 use super::ftrait::Function;
-use std::cell::Cell;
+use core::cmp::{Eq, PartialEq};
+use std::{cell::Cell, collections::HashSet};
 
 // The "Tensor" class, with very very basic things implemented
 // TODO: Addition of require_grad, is_leaf, addition of utility functions and traits(detach, require_grad, Display, Hash etc.), optimization based on those fields
@@ -21,11 +22,17 @@ impl<'a> Tensor<'a> {
 
     // Toposort: From tinygrad + pytorch. Checking of it existing or not
     // implemented.
-    // TODO: Implement Hash Trait for Tensor
-    fn _deepwalk(node: &'a Tensor<'a>, nodes: &'_ mut Vec<&'a Tensor<'a>>) {
+    fn _deepwalk(
+        node: &'a Tensor<'a>,
+        nodes: &'_ mut Vec<&'a Tensor<'a>>,
+        visited: &mut Vec<&'a Tensor<'a>>,
+    ) {
         if let Some(n) = &node._ctx {
+            visited.push(node);
             for i in n.parents() {
-                Self::_deepwalk(i, nodes);
+                if !visited.contains(&i) {
+                    Self::_deepwalk(i, nodes, visited);
+                }
             }
             nodes.push(node);
         }
@@ -33,7 +40,8 @@ impl<'a> Tensor<'a> {
 
     fn walk(&'a self) -> Vec<&Tensor> {
         let mut nodes = Vec::new();
-        Self::_deepwalk(self, &mut nodes);
+        let mut visited = Vec::new();
+        Self::_deepwalk(self, &mut nodes, &mut visited);
         nodes.reverse();
         nodes
     }
@@ -56,3 +64,10 @@ impl<'a> Tensor<'a> {
         }
     }
 }
+
+impl<'a> PartialEq for Tensor<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self, other)
+    }
+}
+impl<'a> Eq for Tensor<'a> {}
