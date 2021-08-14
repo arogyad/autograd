@@ -1,7 +1,8 @@
 #![allow(unused)]
 use super::ftrait::Function;
 use core::cmp::{Eq, PartialEq};
-use std::{cell::Cell, collections::HashSet};
+use std::cell::Cell;
+use std::ops::{Add, Mul};
 
 // The "Tensor" class, with very very basic things implemented
 // TODO: Addition of require_grad, is_leaf, addition of utility functions and traits(detach, require_grad, Display, Hash etc.), optimization based on those fields
@@ -71,3 +72,21 @@ impl<'a> PartialEq for Tensor<'a> {
     }
 }
 impl<'a> Eq for Tensor<'a> {}
+
+impl<'a> Add<&'a Tensor<'a>> for &'a Tensor<'a> {
+    type Output = crate::functions::Add<'a>;
+
+    fn add(self, other: &'a Tensor<'a>) -> Self::Output {
+        crate::functions::Add::new([self, other])
+    }
+}
+
+// This are some operations that are implemented, cannot return Tensor as the lifetime of the
+// returned tensor is linked to the ctx variable
+impl<'a> Mul<&'a Tensor<'a>> for &'a Tensor<'a> {
+    type Output = crate::functions::Mul<'a>;
+
+    fn mul(self, other: &'a Tensor<'a>) -> Self::Output {
+        crate::functions::Mul::new([self, other])
+    }
+}
