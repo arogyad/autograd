@@ -17,8 +17,7 @@ impl<'a> Add<'a> {
 
 impl<'a> Function for Add<'a> {
     fn apply(&self) -> Tensor {
-        let _ret = Tensor::new(self.forward(), Some(Box::new(self)));
-        _ret
+        Tensor::new(self.forward(), Some(self))
     }
 
     fn forward(&self) -> f64 {
@@ -46,8 +45,7 @@ impl<'a> Mul<'a> {
 
 impl<'a> Function for Mul<'a> {
     fn apply(&self) -> Tensor {
-        let _ret = Tensor::new(self.forward(), Some(Box::new(self)));
-        _ret
+        Tensor::new(self.forward(), Some(self))
     }
 
     fn forward(&self) -> f64 {

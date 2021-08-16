@@ -9,11 +9,11 @@ use std::ops::{Add, Mul};
 pub struct Tensor<'a> {
     pub data: f64,
     pub grad: Cell<f64>,
-    pub _ctx: Option<Box<&'a dyn Function>>,
+    pub _ctx: Option<&'a dyn Function>,
 }
 
 impl<'a> Tensor<'a> {
-    pub fn new(data: f64, _ctx: Option<Box<&'a dyn Function>>) -> Self {
+    pub fn new(data: f64, _ctx: Option<&'a dyn Function>) -> Self {
         Self {
             data,
             grad: Cell::new(0.),
