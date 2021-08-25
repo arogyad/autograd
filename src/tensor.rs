@@ -1,7 +1,9 @@
 #![allow(unused)]
+use crate::functions::Add as cAdd;
+
 use super::ftrait::Function;
 use core::cmp::{Eq, PartialEq};
-use std::cell::Cell;
+use std::cell::RefCell;
 use std::ops::{Add, Deref, Mul};
 use std::rc::Rc;
 
@@ -9,16 +11,17 @@ use std::rc::Rc;
 // The actual tensor class is defined after this definition. Using Rc<Wrapper> makes it less
 // idiomatic but more(extremely) clean.
 pub struct Wrapper {
-    pub data: f64,
-    pub grad: Cell<f64>,
+    pub data: Vec<f64>,
+    // TODO: Change grad -> RefCell<Option<Vec<f64>>>
+    pub grad: RefCell<Vec<f64>>,
     pub _ctx: Option<Box<dyn Function>>,
 }
 
 impl Wrapper {
-    pub fn new(data: f64, _ctx: Option<Box<dyn Function>>) -> Self {
+    pub fn new(data: Vec<f64>, _ctx: Option<Box<dyn Function>>) -> Self {
         Self {
+            grad: RefCell::new(vec![0.; data.len()]),
             data,
-            grad: Cell::new(0.),
             _ctx,
         }
     }
@@ -50,19 +53,12 @@ impl Wrapper {
     }
 
     pub fn backward(&self) {
-        self.grad.set(1.);
+        self.grad.replace(vec![1.; self.data.len()]);
         // TODO: require_grad check and is_leaf checks to prevent unnecessary grad creations
         for t0 in self.walk() {
-            let grads = t0._ctx.as_ref().unwrap().backward(t0.grad.get());
-            if t0._ctx.as_ref().unwrap().parents().len() == 1 {
-                let grads = [grads];
-            }
+            let grads = t0._ctx.as_ref().unwrap().backward(t0.grad.take());
             for (t, g) in t0._ctx.as_ref().unwrap().parents().iter().zip(grads) {
-                if t.grad.get() != 0. {
-                    t.grad.set(t.grad.get() + g)
-                } else {
-                    t.grad.set(g);
-                }
+                t.grad.replace_with(|old| cAdd::forward(old, &g));
             }
         }
     }
@@ -80,10 +76,10 @@ impl Eq for Wrapper {}
 pub struct Tensor(pub Rc<Wrapper>);
 
 impl Tensor {
-    pub fn new(data: f64, _ctx: Option<Box<dyn Function>>) -> Self {
+    pub fn new(data: Vec<f64>, _ctx: Option<Box<dyn Function>>) -> Self {
         Self(Rc::new(Wrapper {
+            grad: RefCell::new(vec![0.; data.len()]),
             data,
-            grad: Cell::new(0.),
             _ctx,
         }))
     }

@@ -2,19 +2,14 @@ mod ftrait;
 mod functions;
 mod tensor;
 
-#[cfg(test)]
-mod tests {
+pub mod benches {
     use super::tensor::Tensor;
-
-    #[test]
-    fn test_rc() {
-        let a = Tensor::new(2., None);
-        let b = Tensor::new(3., None);
+    pub fn bench_rc(x: usize) {
+        let a = Tensor::new(vec![2.; x], None);
+        let b = Tensor::new(vec![3.; x], None);
         let c = &a * &b;
-        let d = Tensor::new(4., None);
+        let d = Tensor::new(vec![4.; x], None);
         let e = &c + &d;
         e.backward();
-        assert!(a.grad.get() == 3.);
-        assert!(b.grad.get() == 2.);
     }
 }
