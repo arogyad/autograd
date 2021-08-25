@@ -2,18 +2,20 @@
 use super::ftrait::Function;
 use core::cmp::{Eq, PartialEq};
 use std::cell::Cell;
-use std::ops::{Add, Mul};
+use std::ops::{Add, Deref, Mul};
+use std::rc::Rc;
 
-// The "Tensor" class, with very very basic things implemented
-// TODO: Addition of require_grad, is_leaf, addition of utility functions and traits(detach, require_grad, Display, Hash etc.), optimization based on those fields
-pub struct Tensor<'a> {
+// The "Wrapper" class, with very very basic things implemented
+// The actual tensor class is defined after this definition. Using Rc<Wrapper> makes it less
+// idiomatic but more(extremely) clean.
+pub struct Wrapper {
     pub data: f64,
     pub grad: Cell<f64>,
-    pub _ctx: Option<&'a dyn Function>,
+    pub _ctx: Option<Box<dyn Function>>,
 }
 
-impl<'a> Tensor<'a> {
-    pub fn new(data: f64, _ctx: Option<&'a dyn Function>) -> Self {
+impl Wrapper {
+    pub fn new(data: f64, _ctx: Option<Box<dyn Function>>) -> Self {
         Self {
             data,
             grad: Cell::new(0.),
@@ -23,15 +25,15 @@ impl<'a> Tensor<'a> {
 
     // Toposort: From tinygrad + pytorch. Checking of it existing or not
     // implemented.
-    fn _deepwalk(
-        node: &'a Tensor<'a>,
-        nodes: &'_ mut Vec<&'a Tensor<'a>>,
-        visited: &mut Vec<&'a Tensor<'a>>,
+    fn _deepwalk<'a>(
+        node: &'a Wrapper,
+        nodes: &'_ mut Vec<&'a Wrapper>,
+        visited: &mut Vec<&'a Wrapper>,
     ) {
         if let Some(n) = &node._ctx {
             visited.push(node);
             for i in n.parents() {
-                if !visited.contains(&i) {
+                if !visited.contains(&i.as_ref()) {
                     Self::_deepwalk(i, nodes, visited);
                 }
             }
@@ -39,7 +41,7 @@ impl<'a> Tensor<'a> {
         }
     }
 
-    fn walk(&'a self) -> Vec<&Tensor> {
+    fn walk(&self) -> Vec<&Wrapper> {
         let mut nodes = Vec::new();
         let mut visited = Vec::new();
         Self::_deepwalk(self, &mut nodes, &mut visited);
@@ -47,8 +49,8 @@ impl<'a> Tensor<'a> {
         nodes
     }
 
-    pub fn backward(&mut self) {
-        self.grad = Cell::new(1.);
+    pub fn backward(&self) {
+        self.grad.set(1.);
         // TODO: require_grad check and is_leaf checks to prevent unnecessary grad creations
         for t0 in self.walk() {
             let grads = t0._ctx.as_ref().unwrap().backward(t0.grad.get());
@@ -66,27 +68,53 @@ impl<'a> Tensor<'a> {
     }
 }
 
-impl<'a> PartialEq for Tensor<'a> {
+impl PartialEq for Wrapper {
     fn eq(&self, other: &Self) -> bool {
         std::ptr::eq(self, other)
     }
 }
-impl<'a> Eq for Tensor<'a> {}
+impl Eq for Wrapper {}
 
-impl<'a> Add<&'a Tensor<'a>> for &'a Tensor<'a> {
-    type Output = crate::functions::Add<'a>;
+// Actual Tensor Implementation, The tensor is Rc<Wrapper> so we put it inside a thin wrapper. This
+// is opposite of what should be done.
+pub struct Tensor(pub Rc<Wrapper>);
 
-    fn add(self, other: &'a Tensor<'a>) -> Self::Output {
-        crate::functions::Add::new([self, other])
+impl Tensor {
+    pub fn new(data: f64, _ctx: Option<Box<dyn Function>>) -> Self {
+        Self(Rc::new(Wrapper {
+            data,
+            grad: Cell::new(0.),
+            _ctx,
+        }))
+    }
+
+    fn get(&self) -> Rc<Wrapper> {
+        Rc::clone(&self.0)
+    }
+}
+impl Deref for Tensor {
+    type Target = Wrapper;
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
-// This are some operations that are implemented, cannot return Tensor as the lifetime of the
-// returned tensor is linked to the ctx variable
-impl<'a> Mul<&'a Tensor<'a>> for &'a Tensor<'a> {
-    type Output = crate::functions::Mul<'a>;
+impl Add for &Tensor {
+    type Output = Tensor;
+    fn add(self, other: &Tensor) -> Self::Output {
+        Tensor(Rc::new(crate::functions::Add::apply(
+            self.get(),
+            other.get(),
+        )))
+    }
+}
 
-    fn mul(self, other: &'a Tensor<'a>) -> Self::Output {
-        crate::functions::Mul::new([self, other])
+impl Mul for &Tensor {
+    type Output = Tensor;
+    fn mul(self, other: &Tensor) -> Self::Output {
+        Tensor(Rc::new(crate::functions::Mul::apply(
+            self.get(),
+            other.get(),
+        )))
     }
 }
