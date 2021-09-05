@@ -8,7 +8,7 @@ use std::ops::{Add, Deref, Mul};
 use std::rc::Rc;
 
 // The "Wrapper" class, with very very basic things implemented
-// The actual tensor class is defined after this definition. Using Rc<Wrapper> makes it less
+// The actual "tensor"(?) class is defined after this definition. Using Rc<Wrapper> makes it less
 // idiomatic but more(extremely) clean.
 pub struct Wrapper {
     pub data: Vec<f64>,
@@ -30,7 +30,7 @@ impl Wrapper {
     // implemented.
     fn _deepwalk<'a>(
         node: &'a Wrapper,
-        nodes: &'_ mut Vec<&'a Wrapper>,
+        nodes: &mut Vec<&'a Wrapper>,
         visited: &mut Vec<&'a Wrapper>,
     ) {
         if let Some(n) = &node._ctx {
@@ -71,8 +71,7 @@ impl PartialEq for Wrapper {
 }
 impl Eq for Wrapper {}
 
-// Actual Tensor Implementation, The tensor is Rc<Wrapper> so we put it inside a thin wrapper. This
-// is opposite of what should be done.
+// Actual Tensor Implementation, The tensor is Rc<Wrapper> so we put it inside a thin wrapper.
 pub struct Tensor(pub Rc<Wrapper>);
 
 impl Tensor {
