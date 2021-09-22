@@ -1,2 +1,2 @@
 # Autograd
-A pytorch + tinygrad like DAG graph auto differentiation engine. The implementation is a simpler version of Candle's autograd. Very simple & decently documented.
+A pytorch + tinygrad like DAG graph auto differentiation engine. This is a simple version of a real autograd engine.
